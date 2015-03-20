@@ -33,18 +33,24 @@ send:function(message){
   }
 });
 },
-fetch: function(){
-	
+fetch: function(input){
+
+	if (input===undefined) {
+	  input = {order: "-createdAt"};
+	}
+		// data: 'where={"name": "vishal"}',
+ 
 	 $.ajax({	
 		url: app.server,
 		type: 'GET',
-		data: {order: "-createdAt"},
+		data: input,
 		contentType: 'application/json',
 		success: function (data) {
 			app['returnData'] = data.results;
+			app['rooms']={}
 			for(var i = 0; i<app.returnData.length;i++){
 				var temp = app.returnData[i];
-				if (temp.objectId===app.lastcheck){break;}
+				
 				app['rooms'][temp.roomname]= app['rooms'][temp.roomname]||[];
 				app['rooms'][temp.roomname].push([temp.username,temp.text,temp.createdAt]);
 				app['lastcheck']=app.returnData[0].objectId;
@@ -68,7 +74,13 @@ addMessage:function(message) {
 //           text: 'Never underestimate the power of the Schwartz!',
 //           roomname: 'lobby'
 //         };
-	var tweet = '<div data-lobby="' + message.roomname + '" class ="tweet"><p class="username" data-name ='+message.username+'>' + message.username + ':</p><p class="text">' + message.text + '</p></div>';
+  var tweet;
+   if((login['Friend'].length>0) && (login.Friend.indexOf(message['username'])!==-1)) {
+     
+       tweet = '<div data-lobby="' + message.roomname + '" class ="tweet"><b><p class="username" data-name ="'+message.username+'">' + message.username + ':</p><p class="text">' + message.text + '</b></p></div>';
+     } else {
+       tweet = '<div data-lobby="' + message.roomname + '" class ="tweet"><p class="username" data-name ="'+message.username+'">' + message.username + ':</p><p class="text">' + message.text + '</p></div>';
+   	}
 	$('#chats').append(tweet);
 
 	},
@@ -81,7 +93,7 @@ clearMessages:function(){
 newMessage:function(){
   //get data from textbox
   var data = document.getElementById('textbox').value ;
-  var user = document.getElementById('username').value ;
+  var user = login['name'] ;//user.name
   var message={
   	username:user,
   	text: data,
@@ -121,7 +133,11 @@ addFriend:function(){
 
 }
 };
-
+var login={
+	'name':null,
+	'Friend':[],
+	'id': null
+}
 $(document).ready(function(){
 	//event listener for room selection:
   $('#roomSelect').on('click','.room', function(){
@@ -134,9 +150,42 @@ $(document).ready(function(){
   	console.log("clicks")
 
   })
+  var loggedin = false;
+  $('#login').on('click',function(){
+  	login['name'] = document.getElementById('username').value;
+ 
+  	$('#login').hide();
+  	$('#username').hide();
+   	$.ajax({
+		url: app.server,
+		type: 'GET',
+		data: 'where={"name":"'+login.name+'"}',
+		contentType: 'application/json',
+		success: function(data){
+			if(data.results.length===1){login['id']=data.results[0]['objectId'];
+				login['Friend']= data.results[0]['friends'];
+			}
+			else{var userinfo={'name':login['name'],
+					'friends':[]
+				};
+				login['Friend'] = [];
+				app.send(userinfo);
+			}
+			console.log();
+			//if array is 1 do{pull friends to local and push later} else no 
+		},
+		error:function(){}
+
+  	});
+  });
 	app.init();
 	setInterval(function(){app.init()},20000);
 		var node;
-	
+	$("#chats").on('click', '.username', function(){
+		var name = $(this).data('name');
+		if(confirm('Do you want to add a Friend')){console.log(name)}
+		else{}
+	})
+	//onclickfunction(){if (loggedin){put to friends server using id}})
 });
 
